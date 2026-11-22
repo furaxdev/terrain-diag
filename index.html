@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Terrain Diag</title>
+<meta name="theme-color" content="#f4f2ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Terrain Diag">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f2ec; --card:#fff; --ink:#131309; --soft:#6b675c; --line:#e3e0d6;
+    --blue:#1f3fd0; --blue-soft:#f2f4ff; --blue-line:#ccd3f5;
+    --green:#0e8f5a; --amber:#b45309; --red:#b91c1c;
+    --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:15px/1.45 'Inter',system-ui,-apple-system,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+
+  /* ── barre haute ── */
+  .top{flex:none;padding:calc(11px + var(--sat)) 16px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .top-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .top h1{margin:0;font-size:20px;letter-spacing:-.02em;line-height:1.2}
+  .top .sub{font-size:12px;color:var(--soft);margin-top:3px}
+  .icon-btn{
+    flex:none;width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);display:grid;place-items:center;cursor:pointer;
+  }
+  .icon-btn:active{background:#f0eee7}
+  .icon-btn svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ── écrans ── */
+  .screens{flex:1;min-height:0;position:relative}
+  .screen{position:absolute;inset:0;overflow-y:auto;padding:14px 14px 26px;display:none}
+  .screen.on{display:block}
+  .screen::-webkit-scrollbar{width:0}
+
+  /* ── cartes ── */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:11px}
+  .card h2{margin:0 0 11px;font-size:14.5px;letter-spacing:-.01em}
+  .card h2 .count{color:var(--soft);font-weight:400}
+  .hint{font-size:11.5px;color:var(--soft);margin:9px 0 0}
+
+  /* ── visites ── */
+  .visit{
+    display:flex;gap:11px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px 13px;margin-bottom:9px;cursor:pointer;
+  }
+  .visit:active{background:#fbfaf6}
+  .hour{flex:none;width:44px;text-align:center;font:500 13px/1.2 'JetBrains Mono',monospace}
+  .hour span{display:block;font-size:10px;color:var(--soft);margin-top:3px;font-family:'Inter',sans-serif}
+  .vinfo{flex:1;min-width:0}
+  .vinfo b{display:block;font-size:14.5px;letter-spacing:-.01em}
+  .vinfo .addr{font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vinfo .money{font-size:12.5px;color:var(--ink);margin-top:4px;font-weight:600}
+  .tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+  .tag{font-size:10.5px;padding:2px 6px;border-radius:5px;background:#f1efe8;color:var(--soft);border:1px solid var(--line)}
+  .tag.blue{background:var(--blue-soft);color:var(--blue);border-color:var(--blue-line)}
+  .dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:5px;background:#c9c5b8}
+  .dot.done{background:var(--green)}
+  .dot.late{background:var(--red)}
+
+  /* ── KPI ── */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+  .kpi i{font-style:normal;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--soft)}
+  .kpi b{display:block;font-size:21px;letter-spacing:-.02em;margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi.bad b{color:var(--red)} .kpi.ok b{color:var(--green)} .kpi.amber b{color:var(--amber)}
+
+  /* ── formulaires ── */
+  .field{margin-bottom:11px}
+  .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:5px;font-weight:600}
+  .field input,.field textarea,.field select{
+    width:100%;border:1px solid var(--line);border-radius:9px;background:#fdfcf9;
+    padding:10px 11px;font-size:15px;outline:none;
+  }
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--blue-line);background:#fff;box-shadow:0 0 0 3px #f2f4ff}
+  .field textarea{resize:vertical;min-height:64px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{
+    font-size:12.5px;padding:7px 11px;border-radius:9px;border:1px solid var(--line);
+    background:#faf9f5;cursor:pointer;user-select:none;
+  }
+  .chip.on{background:var(--blue-soft);border-color:var(--blue-line);color:var(--blue);font-weight:600}
+  .chip:active{transform:scale(.97)}
+
+  /* ── boutons ── */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    height:46px;padding:0 18px;border-radius:10px;border:1px solid var(--ink);
+    background:var(--ink);color:#fff;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;
+  }
+  .btn:active{opacity:.88}
+  .btn.ghost{background:var(--card);color:var(--ink);border-color:var(--line)}
+  .btn.danger{background:#fff;color:var(--red);border-color:#f2c2c2}
+  .btn.block{width:100%}
+  .btn.sm{height:36px;font-size:13px;padding:0 13px;border-radius:8px}
+  .btn-row{display:flex;gap:8px;margin-top:4px}
+  .btn-row .btn{flex:1}
+  .fab{
+    position:absolute;right:16px;bottom:calc(16px + var(--sab));width:56px;height:56px;border-radius:17px;
+    background:var(--ink);color:#fff;border:0;display:grid;place-items:center;cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.22);z-index:5;
+  }
+  .fab svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+  /* ── photos ── */
+  .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .photo{
+    aspect-ratio:1;border-radius:9px;border:1px dashed #cdc8ba;background:#faf9f4;
+    display:grid;place-items:center;font:500 10.5px/1 'JetBrains Mono',monospace;
+    color:#a8a294;position:relative;overflow:hidden;cursor:pointer;padding:0;
+  }
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo .del{
+    position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;
+    background:rgba(0,0,0,.62);color:#fff;font-size:12px;line-height:19px;text-align:center;
+  }
+  .photo.add{border-style:dashed;font-size:22px;color:#a8a294}
+
+  /* ── signature ── */
+  .sigwrap{border:1px dashed #cdc8ba;border-radius:10px;background:#fdfcf9;overflow:hidden;position:relative}
+  #sigCanvas{display:block;width:100%;height:130px;touch-action:none}
+  .sigempty{
+    position:absolute;inset:0;display:grid;place-items:center;font-size:12.5px;
+    color:#a8a294;pointer-events:none;
+  }
+  .sigempty.hide{display:none}
+
+  /* ── facturation ── */
+  .bill-row{
+    display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:10px 12px;margin-bottom:7px;font-size:13.5px;
+  }
+  .bill-row .bmain{flex:1;min-width:0}
+  .bill-row .bmain b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bill-row .bmain span{font-size:11.5px;color:var(--soft)}
+  .bill-row .amt{font:500 13px/1 'JetBrains Mono',monospace;white-space:nowrap}
+  .pill{font-size:10px;padding:3px 7px;border-radius:5px;border:1px solid;white-space:nowrap;cursor:pointer}
+  .pill.f{color:var(--green);border-color:#bbe3c9;background:#f0fbf4}
+  .pill.a{color:var(--amber);border-color:#f3d9a8;background:#fdf7ec}
+  .pill.r{color:var(--red);border-color:#f2c2c2;background:#fdf1f1}
+  .pill.e{color:var(--blue);border-color:var(--blue-line);background:var(--blue-soft)}
+  .sect-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);margin:16px 0 8px;font-weight:600}
+  .empty{
+    text-align:center;padding:34px 20px;color:var(--soft);font-size:13.5px;
+    border:1px dashed var(--line);border-radius:14px;background:#faf9f5;
+  }
+  .empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:5px}
+
+  /* ── onglets ── */
+  .tabs{flex:none;display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:var(--sab)}
+  .tab{
+    flex:1;border:0;background:none;padding:9px 3px 10px;font-size:10px;
+    color:var(--soft);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
+  }
+  .tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tab.on{color:var(--blue);font-weight:600}
+
+  /* ── toast ── */
+  .toast{
+    position:fixed;left:50%;bottom:calc(78px + var(--sab));transform:translate(-50%,14px);
+    background:#131309;color:#fff;padding:10px 16px;border-radius:10px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:.22s;z-index:50;max-width:86vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ── modale ── */
+  .modal{position:fixed;inset:0;background:rgba(19,19,9,.42);display:none;z-index:60;padding:18px;overflow-y:auto}
+  .modal.on{display:block}
+  .modal .sheet{background:var(--card);border-radius:16px;padding:18px;max-width:520px;margin:24px auto}
+  .modal h3{margin:0 0 12px;font-size:17px}
+
+  @media (min-width:760px){
+    body{background:#e9e6de}
+    .screens,.top,.tabs{max-width:520px;width:100%;margin:0 auto}
+    body{align-items:center}
+    .wrap-app{max-width:520px;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg);box-shadow:0 0 0 1px var(--line)}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ JOURNÉE ═══════════ -->
+<div class="wrap-app" style="display:flex;flex-direction:column;height:100%;width:100%">
+  <div class="top">
+    <div class="top-row">
+      <div>
+        <h1 id="h-title">Ma journée</h1>
+        <div class="sub" id="h-sub">—</div>
+      </div>
+      <button class="icon-btn" id="btnToday" title="Aujourd'hui">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="screens">
+    <!-- écran journée -->
+    <section class="screen on" id="s-day">
+      <div class="kpis" id="dayKpis"></div>
+      <div id="dayList"></div>
+      <button class="fab" id="fabAdd" title="Nouvelle visite">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </section>
+
+    <!-- écran fiche -->
+    <section class="screen" id="s-visit">
+      <div id="visitBody"></div>
+    </section>
+
+    <!-- écran facturation -->
+    <section class="screen" id="s-bill">
+      <div id="billBody"></div>
+    </section>
+
+    <!-- écran réglages -->
+    <section class="screen" id="s-set">
+      <div id="setBody"></div>
+    </section>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab on" id="t-day">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Journée
+    </button>
+    <button class="tab" id="t-bill">
+      <svg viewBox="0 0 24 24"><path d="M4 3h16v18l-4-3-4 3-4-3-4 3z"/><path d="M8 8h8M8 12h5"/></svg>
+      Facturation
+    </button>
+    <button class="tab" id="t-set">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1A1.7 1.7 0 008 19.4a1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H2a2 2 0 110-4h.1A1.7 1.7 0 003.6 8a1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H8a1.7 1.7 0 001-1.5V2a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V8a1.7 1.7 0 001.5 1H22a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+      Réglages
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="sheet" id="modalSheet"></div></div>
+<input type="file" id="filePicker" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="jsonPicker" accept="application/json" style="display:none">
+
+<script src="./app.js"></script>
+</body>
+</html>
